@@ -24,17 +24,22 @@ type Stream struct {
 	dieLock       sync.Mutex
 	readDeadline  atomic.Value
 	writeDeadline atomic.Value
+	tunnelName    string
 }
 
 // newStream initiates a Stream struct
-func newStream(id uint32, frameSize int, sess *Session) *Stream {
+func newStream(id uint32, frameSize int, sess *Session, data string) *Stream {
 	s := new(Stream)
 	s.id = id
 	s.chReadEvent = make(chan struct{}, 1)
 	s.frameSize = frameSize
 	s.sess = sess
 	s.die = make(chan struct{})
+	s.tunnelName = data
 	return s
+}
+func (s *Stream) TunnelName() string {
+	return s.tunnelName
 }
 
 // ID returns the unique stream ID.
@@ -224,7 +229,7 @@ func (s *Stream) recycleTokens() (n int) {
 
 // split large byte buffer into smaller frames, reference only
 func (s *Stream) split(bts []byte, cmd byte, sid uint32) []Frame {
-	frames := make([]Frame, 0, len(bts)/s.frameSize+1)
+	var frames []Frame
 	for len(bts) > s.frameSize {
 		frame := newFrame(cmd, sid)
 		frame.data = bts[:s.frameSize]
